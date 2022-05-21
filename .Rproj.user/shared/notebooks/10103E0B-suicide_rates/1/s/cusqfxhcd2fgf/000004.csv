@@ -1,0 +1,2 @@
+"0","df_suicide%>%dplyr::select(c(""year"",""HDI for year"",""country""))%>%unique()%>%"
+"0","  datatable()"

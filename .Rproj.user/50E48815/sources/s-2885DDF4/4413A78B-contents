@@ -1,0 +1,124 @@
+library(tidyverse)
+library(dplyr)
+library(readxl)
+?select
+df1 = iris%>%dplyr::select_if(is.factor)%>%head(3)
+#arrange orders dataframe according to variables
+df2 = iris%>%dplyr::select(contains("Sepal"))%>%
+  dplyr::arrange(desc(Sepal.Width))%>%
+  head(3)
+#rename
+df2 = df2%>%dplyr::rename(SepalW=Sepal.Width,SepalL=Sepal.Length)
+chngNames = function(x){
+  tmp = str_sub(x,1,7)
+  return(gsub("\\.","",tmp))
+}
+iris%>%dplyr::rename_with(chngNames,contains("Sepal"))%>%head(3)
+#summarise
+#create one or more scalar variables summarizing the variables of an existing tb
+?dplyr::summarise
+iris%>%dplyr::select(-Species)%>%
+  summarise(median = median(Petal.Length),mean=mean(Petal.Length))
+
+columns<-c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width") 
+iris%>%summarise_at(columns,.funs=list(mean, median))
+iris%>%summarise_if(is.numeric,.funs=list(mean, median))
+#across: applies function(s) to a set of columns
+iris%>%summarise(across(.cols=is.numeric,.fns=list(mean, median)))
+#mutate
+dfMut = iris%>%mutate(across(.cols=is.numeric,.funs =as.character))%>%head(3)
+##############EXERCISES###############################
+#4
+mycars = mtcars%>%mutate(km_per_liter = mpg*0.425)
+#5
+mycars_S=mycars%>%sample_frac(0.5)
+#6
+mycars_S%>%distinct()
+#7
+mycars_S%>%filter(mpg>20,hp>100)
+#8
+mycars_s=mycars_S%>%mutate(across(everything(),as.character))
+#9
+mycars_S%>%summarise(across(.col=c("hp","mpg"),.fns=list(median,mean)))
+#######################################################
+#group_by
+iris%>%group_by(Species)%>%dplyr::summarise(across(.fns=list(median,mean)))
+#slice_max/min/head/tail/sample
+iris%>%slice_max(order_by=Petal.Width,n=1) #first 2 rows with max Petal.Width
+iris%>%sample_frac(0.03) # 3%
+iris%>%slice_sample(prop=0.03)
+################LAB###################################
+list.files()
+masters_data = read_csv("Master(1).csv")
+masters_data%>%count(birthYear)
+colnames(masters_data)
+?count
+masters_data%>%group_by(birthCountry)%>%dplyr::summarise(n=n())
+masters_data%>%dplyr::count(birthCountry)%>%arrange(n)
+countries = masters_data%>%group_by(birthCountry)%>%
+  summarise(NoP = n(),avgW = mean(weight/2.2))%>%
+  filter(NoP>5)%>%slice_max(order_by = avgW, n = 5)%>%
+  arrange(desc(birthCountry))
+######################################################
+# window rank functions
+dfR = iris%>%slice_sample(n=10)
+dfR%>%arrange(Species)%>%
+  mutate(id = row_number(Species),minrank=min_rank(Species), 
+         denserank=dense_rank(Species),groups=ntile(Species,3))
+# add row_numbers in every group by decreasing size of Petal.Length
+dfR%>%group_by(Species)%>%arrange(desc(Petal.Length))%>%
+  mutate(id=row_number())%>%ungroup()%>%select(Petal.Length,Species,id)%>%
+  arrange(Species)
+######################LAB###############################
+haviest2nd = masters_data%>%filter(birthCountry%in%countries$birthCountry)%>%
+  group_by(birthCountry)%>%arrange(desc(weight))%>%
+  mutate(id = row_number(),weight=weight/2.2)%>%
+  ungroup()%>%filter(id == 2)%>%select(nameGiven,birthCountry,weight)
+########################################################
+# spread/gather
+dfA = airquality%>%select(Month, Day, Temp)%>%filter(Month %in% c(5,6) & Day<4)
+dfB = dfA%>%spread(key=Month,value = Temp)
+dfB%>%gather(Month, Temp, - Day)
+#pivot_wider~spread/pivot_longer~gather
+dfA%>%pivot_wider(names_prefix = "Month_",names_from = Month,values_from = Temp)
+dfB%>%pivot_longer(cols=c(2,3),names_to = "Month",values_to = "Temp")
+#######################LAB##############################
+norway = read_xlsx("norway_new_car_sales_by_model.xlsx")
+norway%>%select(Manufacturer,Quantity,Year)%>%
+  group_by(Manufacturer,Year)%>%
+  dplyr::summarise(n=n())#%>%
+  pivot_wider(names_from = Year,values_from = n)
+########################################################
+# user-defined functions
+# single argument f-s can be used normally
+sAfunction = function(x){round(x-3.5)}
+v = c(7,4.3,9.2)
+sAfunction(v)
+# multiple argument functions:
+dAdunction = function(x,y){return(sum(x,y))}
+# anti-example
+airquality%>%mutate(something=dAdunction(Month,Day))%>%head(3)
+# good examples
+airquality%>%rowwise()%>%mutate(something=dAdunction(Month, Day))%>%head(3)
+dAfunction_v = Vectorize(dAdunction)
+airquality%>%mutate(something=dAfunction_v(Month, Day))%>%head(3)
+# JOINS
+bands = data.frame(name=c("Mick","John","Paul"),band=c("Stones","Beatles","Beatles"))
+instruments=data.frame(name=c("John","Paul","Keith"),plays =c("guitar","bass","guitar"))
+bands%>%inner_join(instruments)
+bands%>%left_join(instruments)
+bands%>%right_join(instruments)
+bands%>%full_join(instruments)
+bands%>%anti_join(instruments)
+
+d1 <- data_frame(
+  x = letters[1:3],
+  y = LETTERS[1:3],
+  a = rnorm(3)
+)
+d2 <- data_frame(
+  x2 = letters[3:1],
+  y2 = LETTERS[3:1],
+  b = rnorm(3)
+)
+left_join(d1, d2, by = c("x" = "x2", "y" = "y2"))

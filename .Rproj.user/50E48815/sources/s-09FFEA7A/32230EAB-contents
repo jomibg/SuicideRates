@@ -1,0 +1,73 @@
+library(tidyverse)
+library(maps)
+library(gt)
+library(rowr)
+library(patchwork)
+library(corrplot)
+library(rstatix)
+
+df_suicide = read_csv("master.csv")
+
+df_country = df_suicide%>%
+  select(country,`suicides/100k pop`,suicides_no,
+         `gdp_for_year ($)`,`gdp_per_capita ($)`)%>%
+  group_by(country)%>%
+  summarise(`suicide number` = sum(suicides_no),
+            `suicide rates` = mean(`suicides/100k pop`),
+            `gdp_per_capita ($)`=mean(`gdp_per_capita ($)`),
+            `gdp_for_year ($)` = mean(`gdp_for_year ($)`))%>%
+  arrange(desc(`suicide number`),desc(`suicide rates`))%>%
+  mutate(country = recode(str_trim(country), "United States" = "USA",
+                         "United Kingdom" = "UK",
+                         "Republic of Korea" = "South Korea",
+                         "Russian Federation" = "Russia"))
+#map
+world <- map_data("world")%>% filter(region != "Antarctica") %>% fortify
+mapa = ggplot()+coord_fixed(1.3) + geom_map(data = world, map = world,
+                         aes(x = long, y = lat, group = group, map_id=region),
+                         fill = "white", colour = "#7f7f7f", size=0.5)+
+  geom_map(data = df_country, map=world,
+           aes(fill=`suicide rates`, map_id=country),
+           colour="#7f7f7f", size=0.5)+
+  scale_fill_distiller(palette ="RdBu", direction = -1)
+#chart
+p1 = df_country%>%ggplot()+
+  geom_bar(aes(x=reorder(country,`suicide number`),y=`suicide number`,
+               fill = `suicide number`),
+           stat="identity")+
+  scale_fill_distiller(palette ="RdBu", direction = -1)+
+  coord_flip()+xlab("country")
+p2 = df_country%>%ggplot()+
+  geom_bar(aes(x=reorder(country,`suicide rates`),y=`suicide rates`,
+               fill = `suicide rates`),
+           stat="identity")+
+  scale_fill_distiller(palette ="RdBu", direction = -1)+
+  coord_flip()+xlab("country")
+mapa
+(p1|p2)
+
+#correlation
+tst = df_country%>%select(-country,-`suicide number`)%>%cor_test()%>%
+  filter(var1=="suicide rates" & var2!="suicide rates")%>%
+  select(var1,var2,cor,p)%>%
+  gt(rowname_col = "var2",groupname_col = "var1")%>%
+  tab_header(title = "Correlation an pi values between average suicide rates and
+             average gdp_per_capita/for_year")
+tst
+p1 = df_country%>%ggplot()+
+  geom_point(aes(x=`gdp_for_year ($)`,y=`suicide rates`))
+p2 = df_country%>%ggplot()+
+  geom_point(aes(x=`gdp_per_capita ($)`,y=`suicide rates`))
+(p1|p2)
+
+#HDI
+df_HDI = df_suicide%>%filter(year %in% 2010:2014)%>%
+  drop_na()%>%
+  select(country,`suicides/100k pop`,`HDI for year`)%>%group_by(country)%>%
+  summarise(`HDI for year`=mean(`HDI for year`),`suicides/100k pop`=mean(`suicides/100k pop`))
+df_HDI%>%select(`suicides/100k pop`,`HDI for year`)%>%cor_test()%>%
+  select(var1,var2,cor,p)%>%
+  gt(rowname_col = "var2",groupname_col = "var1")
+df_HDI%>%ggplot(aes(x=`HDI for year`,y=`suicides/100k pop`))+
+  geom_point()+
+  geom_smooth(method = "lm")

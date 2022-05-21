@@ -1,0 +1,118 @@
+---
+title: "Suicide rates exploratory data analysis"
+author: "Jovan Pavlović"
+date: "6/16/2021"
+output: 
+  html_document:
+    toc: yes
+    toc_float: yes
+    theme: paper
+    df_print: paged
+    code_folding: hide
+  word_document:
+    toc: yes
+link-citations: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+Suicide, the act of intentionally causing one's own death, is tragedy that affects families and communities and has long-lasting effects on the people left behind.  
+According to [WHO]("https://www.who.int/news-room/fact-sheets/detail/suicide"):
+
+* Close to 800 000 people die due to suicide every year.  
+* 79% of global suicides occur in low- and middle-income countries.  
+* Suicide is the third leading cause of death in 15-19-year-olds.  
+
+Suicide rates vary between countries and over time, and are affected by various economical and sociological factors. In order for the phenomenon to be better understood, I choose to perform analysis on [Suicide Rates Overview 1985-2016]("https://www.kaggle.com/russellyates88/suicide-rates-overview-1985-to-2016") data set, which provides sufficient amount of data needed for comparison socio-economic information with suicide rates by year and country.
+
+## Presentation and description of the problem
+As mentioned in Introduction, although majority of suicides occurs in low and middle income countries, suicide is a global phenomenon in all regions of the world. Besides economical factors such as [GDP]("https://en.wikipedia.org/wiki/Gross_domestic_product"), taken data set gives us information about [Human Development Index]("https://en.wikipedia.org/wiki/Human_Development_Index"), age and generation of victims, which enables us to form more precise insight while we try to find signals correlated to increased suicide rates over passed few decades among different countries.  
+
+We begin with loading our data frame along with libraries needed for
+analysis:
+```{r message=FALSE}
+library(scales)
+library(lubridate)
+library(gt)
+library(DT)
+library(tidyverse)
+df_suicide = read_csv("master.csv")
+```
+
+## Data description and presentation
+Each observation represents suicide data collected in specific year and country for victims of certain age group and sex.  
+The data set has 12 attributes:  
+
+* country: country of recorded data  
+* year: year of recorded data  
+* sex: male/female  
+* age: Age range of victims divided in 6 groups  
+* suicide_no: number of suicides performed  
+* population: population of country  
+* suicides_100k: $suicide\ number \cdot10^5\over population$  
+* country-year: united country and year values  
+* HDI for year: Human Development Index value of country in given year  
+* gdp_for_year: Gross domestic product value of country in given year  
+* gdp_per_capita: ratio of the GDP value to the average population  
+* generation: generation of suicide victims divided in 6 categories:  
+```{r echo = FALSE}
+birth_starts = c(1965,1925,1910,1946,1980,1995)
+birth_ends = c(1924,1945,1964,1979,1994,2012)
+df_suicide%>%select(generation)%>%unique()%>%cbind(birth_starts)%>%
+  arrange(birth_starts)%>%cbind(birth_ends)%>%gt()%>%
+  cols_label(generation = "Generation name",birth_starts="Starting year",birth_ends="Ending year")
+
+```
+Each generation is demographic [cohort]("https://en.wikipedia.org/wiki/Cohort_(statistics)") which owns specific cultural, psychological and sociological characteristics.  
+
+### Droping unsufficient variables and handling missing values
+Firstly, as we noticed previously, there is redundant column "country-year" with repeating information. Thus first step is to remove this column from data set. 
+```{r}
+df_suicide = df_suicide%>%mutate(`country-year` = NULL)
+```
+Next step is to detect and count missing values in each column and show their part in number of total values.
+```{r warning=FALSE}
+nas = df_suicide%>%select_if(function(x) any(is.na(x)))%>%summarise_each(funs(sum(is.na(.))))
+tot = df_suicide%>%select_if(function(x) any(is.na(x)))%>%
+  summarise_each(funs(n()))
+tab = nas%>%rbind(tot)%>%cbind(count =c("Missing values","Total values"))
+tab%>%gt(rowname_col = "count")%>%
+  tab_header(title = "Presence of missing value per column")
+```
+Additionally we can create bar-chart showing number of missing HDI values per each year and table showing columns: "country", "year and "HDI for year.
+```{r}
+df_suicide%>%select(c("year","HDI for year"))%>%group_by(year)%>%summarise_each(funs(sum(is.na(.))))%>%
+  ggplot()+geom_bar(aes(x=year,y=`HDI for year`),stat = "identity")+
+  ylab("Missing HDI values")
+df_suicide%>%dplyr::select(c("year","HDI for year","country"))%>%unique()%>%
+  datatable()
+```
+From the figure above we can see that majority of missing value are found between years 1987. and 2009. and that we have sufficient HDI values only on interval 2010-2014. Therefore, while trying to find correlation between HDI and other factors we will be limited and consider only values from interval 2010-2014.
+
+## Exploratory data analysis
+We'll begin exploring the data with analysis that refer to whole world. Firstly we'll try to find out whether total number of suicides has increased over the years.
+```{r}
+df_total = df_suicide%>%select(suicides_no,year)%>%group_by(year)%>%
+  dplyr::summarise(total_num=sum(suicides_no))
+df_total %>%ggplot()+geom_bar(aes(x=year,y=total_num,),stat = "identity",fill="blue") +
+  geom_freqpoly(aes(x=year,y=total_num),color="green",stat = "identity",size = 1)+ scale_x_continuous(breaks = seq(1985,2016))+theme(axis.text.x = element_text(angle = 90)) +
+  scale_y_continuous(labels = scales::comma) + 
+  labs(title = "Total suicide number per year",y="number of suicides")
+```
+As plot suggests, total number of suicides increased rapidly from year 1989 to 1990 which is followed by slight increase until year 1998. Also we can see that when the data was collected, 2016 was in beginning. Now it would be reasonable to inspect trend suicide rates.
+```{r}
+df_population = df_suicide%>%select(population,year)%>%group_by(year)%>%
+  dplyr::summarise(total_pop=sum(population))
+
+df_total%>%inner_join(df_population,by="year")%>%mutate(total_rates = total_num*100/total_pop)%>%
+  ggplot()+geom_bar(aes(x = year,y=total_rates),stat = "identity",fill = "green")+ 
+  scale_x_continuous(breaks = seq(1985,2016))+
+  theme(axis.text.x = element_text(angle = 90)) +
+  scale_y_continuous(labels = scales::comma) + 
+  labs(title = "Suicide rate per year",y="suicide rate over 100k population")
+
+```
+As we can conclude from the second histogram, increase of suicide rate follows increase in total number of suicides in period from 1988 to 1995 after which we can observe slight decrease of the rate in contrast number of suicides.

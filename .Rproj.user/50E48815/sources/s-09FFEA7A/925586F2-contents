@@ -1,0 +1,28 @@
+@article{WHO,
+author={WHO},
+year={2021},
+title = {Suicide},
+url={https://www.who.int/news-room/fact-sheets/detail/suicide}
+}
+@article{rblog,
+author={Sharp Sight},
+year ={2017},
+title={How to make a global map in R, step by step},
+url={https://www.r-bloggers.com/2017/02/how-to-make-a-global-map-in-r-step-by-step/}
+}
+@article{psy,
+author={Dr. Saul McLeod},
+year={2019},
+title={What a p-value tells you about statistical significance},
+url={"https://www.simplypsychology.org/p-value.html"}
+}
+@article{pval,
+author={Wikipedia},
+title={p-value},
+url={https://en.wikipedia.org/wiki/P-value}
+}
+@article{pearson,
+author={Wikipedia},
+title={Pearson correlation coefficient},
+url={https://en.wikipedia.org/wiki/Pearson_correlation_coefficient}
+}

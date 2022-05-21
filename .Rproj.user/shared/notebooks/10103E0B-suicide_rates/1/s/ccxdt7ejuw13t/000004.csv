@@ -1,0 +1,5 @@
+"0","birth_starts = c(1965,1925,1910,1946,1980,1995)"
+"0","birth_ends = c(1924,1945,1964,1979,1994,2012)"
+"0","df_suicide%>%select(generation)%>%unique()%>%cbind(birth_starts)%>%"
+"0","  arrange(birth_starts)%>%cbind(birth_ends)%>%gt()%>%"
+"0","  cols_label(generation = ""Generation name"",birth_starts=""Starting year"",birth_ends=""Ending year"")"

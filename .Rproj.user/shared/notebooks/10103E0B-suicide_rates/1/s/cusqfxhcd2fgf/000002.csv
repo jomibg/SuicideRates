@@ -1,0 +1,3 @@
+"0","df_suicide%>%select(c(""year"",""HDI for year""))%>%group_by(year)%>%summarise_each(funs(sum(is.na(.))))%>%"
+"0","  ggplot()+geom_bar(aes(x=year,y=`HDI for year`),stat = ""identity"")+"
+"0","  ylab(""Missing HDI values"")"

@@ -1,0 +1,121 @@
+---
+title: "Reducing sugars report"
+author: "Jovan Pavlović"
+date: "4/23/2021"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+    theme: journal
+    df_print: paged
+  word_document:
+    toc: yes
+link-citations: yes
+bibliography: bibl.bibtex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction(Benedicts test)  
+
+ Benedict's reagent is complex mixture of sodium carbonate, sodium citrate and copper(II) sulfate pentahydrate. The Benedict's reagent is used for identifying reducing sugars(sugars that are capable of acting as a reducing agent which have free ketone or aldehyde groups; Mainly monosaccharide’s and some disaccharides). This is refered as Benedict's test and it's common method for testing presence of glucose in urine.  
+ 
+#### Principle of Benedict’s Test:
+ Reducing sugars(such as glucose) are capable of transferring hydrogens (electrons) to other compounds, a process called reduction. When reducing sugars are mixed with Benedict's reagent and heated, a reduction reaction causes the Benedict's reagent to change color. Color varies from blue to dark red, depending on concentration of sugar in solution.
+ ![](formula.jpeg)
+ 
+## Necessary hardware:
+::::{.columns style="display: flex;"}
+:::{.column width="33%"}
+Spectophotometer
+:::
+:::{.column width="33%"}
+12 glass tubes
+:::
+:::{.column width="33%"}
+6 filter papers
+:::
+::::  
+
+
+## Procedure(Benedict's test)
+Firstly, we picked 2 tubes and added solution containing glucose in one and water in another (approximately 1 ml of each). Then we added same volume of Benedict's reagent (approximately 2 ml) in both tubes and heated them in water bath for 5 min. on 80°C. At this point, we were able to notice that solution in tube where glucose was present changed from blue to dark red. This is caused by reduction of Copper (II) to Copper(I) ions and formation of Copper(I) oxyde which is insoluble in water and is precipitated out of solution
+
+## Procedure(Quantitative test for reducing sugars)
+We repeated Benedict's test in 6 different tubes with same volumes of solutions that contain glucose, but with different concentrations of glucose.  
+Concentrations of glucose:  
+
++ 0.05% in 1st tube  
+
++ 0.1% in 2nd tube 
+
++ 0.25% in 3rd tube  
+
++ 0.5% in 4th tube  
+
++ 1% in 5th tube  
+
++ unknown concentration in 6th tube  
+
+After performing previously described procedure, colors in tubes, in order from 1st to 5th, changed in nuances from light green to dark red and we were able to notice that 6th tube solution was colored in nuance of green that's between colors of solutions in 3rd and 2nd tube. Thus we were able to approximate concentration of glucose in unknown solution (> 0.1% and < 0.25%), but as this test was performed by subjective color comparison we continued with *measurement of light absorbance and formation calibration curve* which letter gave us more accurate information about glucose concentration. Idea of this method is to measure the amount of Copper ions left in solutions, which is done by measuring transmission light at different wavelengths through filtered solution in apparatus called Spectophotometer. So we removed red precipitate by pouring solutions in new set of glass tubes through filter papers. So after we have measured light absorbance of filtered solutions, we plotted curve (using values from solution with known glucose concentrations) on 2D co-ordinate system where x axis corresponds to glucose concentration values and y axis corresponds to value of light absorbance. Thus, we were able to determine glucose concentration in unknown solution by finding it's absorbance value on y axis of curve which gave us corresponding value on x axis(~0.1367).
+```{r echo=FALSE}
+x = c(0.05,0.1,0.25,0.5,1)
+y = c(0.03,0.02,0.015,0.01,0.005)
+plot(x,y,type = "l",main = "Calibration curve",xlab = "Glucose concentration", ylab = "Light absorbance",col = "blue")
+```
+
+## Making calibration curve prediction using R
+When a calibration curve is a straight-line, we represent it using the following mathematical equation:  
+ $y = \beta_0 + \beta_1x$  
+where x is substance concetration and y is measured light absorbance. The constants $\beta_0$ and $\beta_1$ are, respectively, the calibration curve’s expected y-intercept and its expected slope. Because of uncertainty in our measurements, the best we can do is to estimate values for $\beta_1$ and $\beta_1$, which we represent as $b_0$ and $b_1$ The goal of a *linear regression* analysis is to determine the best estimates for $b_0$ and $b_1$. How we do this depends on the uncertainty in our measurements.
+More details about mathematical models of calibration curve prediction on this [link](https://chem.libretexts.org/Bookshelves/Analytical_Chemistry/Book%3A_Analytical_Chemistry_2.1_(Harvey)/05%3A_Standardizing_Analytical_Methods/5.04%3A_Linear_Regression_and_Calibration_Curves#example5.4.1)  
+
+### Entering data and creating regression model
+To begin, create objects that contain the concentration of known solutions and their corresponding absorbance. 
+```{r }
+conc = c(0.05,0.1,0.25,0.5,1)
+absorbance = c(0.03,0.02,0.015,0.01,0.005)
+```
+The command for a straight-line linear regression model is
+```{r eval=FALSE }
+lm(x~y)
+```
+where y and x are the objects the objects our data. To access the results of the regression analysis, we assign them to an object using the following command
+```{r }
+model = lm(absorbance ~ conc)
+```
+To evaluate the results of a linear regression we need to examine the data and the regression line, and to review a statistical summary of the model. To examine our data and the regression line, we use the plot command,and abline command.
+```{r}
+plot(conc,absorbance,type = "l",main = "Calibration curve",xlab = "Glucose concentration", ylab = "Light absorbance")
+abline(model,col = "red") 
+```
+To review a statistical summary of the regression model, we use the summary command.
+```{r}
+summary(model)
+```
+The first section of R’s summary of the regression model lists the residual errors. To examine a plot of the residual errors, use the following command
+```{r}
+plot(model,which = 1)
+```
+  
+### Predicting the uncertainty in sample concentration by given absorbance
+The command for predicting the uncertainty in sample concentration by given absorbance isn't part of R's standard installation. To use this command you need to install the “chemCal” package. Name of this command is *inverse.predict* and it's used in following way
+```{r}
+library(chemCal)
+prediction = inverse.predict(model,0.022)
+```
+As we see concentration estimated by this command is 
+```{r}
+prediction$Prediction
+```
+Finally we will plot resulting calibration curve `r df = data.frame(x = conc, y = absorbance)`
+```{r}
+library(ggplot2)
+ggplot(df,aes(x=x,y=y))+geom_line() + geom_point(aes(y=0.022,x = prediction$Prediction),col = "red")
+```
+
+## Refernces
+[@har]
+[@wiki]

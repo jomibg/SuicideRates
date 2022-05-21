@@ -1,0 +1,12 @@
+@article{har,
+author = {David Harvey},
+year = {2020},
+month = {08},
+title = {Using Excel and R for a Linear Regression },
+url = {https://chem.libretexts.org/Bookshelves/Analytical_Chemistry/Book%3A_Analytical_Chemistry_2.1_(Harvey)/05%3A_Standardizing_Analytical_Methods/5.06%3A_Using_Excel_and_R_for_a_Linear_Regression#figure5.6.6},
+}
+@article{wiki,
+author={Wikipedia},
+title = {Calibration curve},
+url = {https://en.wikipedia.org/wiki/Calibration_curve}
+}

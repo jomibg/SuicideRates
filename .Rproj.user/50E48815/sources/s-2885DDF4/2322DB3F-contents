@@ -1,0 +1,15 @@
+library(tidyverse)
+ggplot(data = faithful) + 
+  geom_point(aes(x = eruptions,y = waiting,shape ="square",
+                 colour=eruptions<3))
+#histagram
+ggplot(data = faithful) + 
+  geom_histogram(aes(x=eruptions,fill = waiting < 60),binwidth = 0.5)+
+  scale_fill_manual(values = c("green","yellow"))
+faithful%>%ggplot(aes(x=eruptions,y=waiting))+geom_point()+geom_density_2d()
+#barchart
+mpg%>%ggplot()+geom_bar(aes(x=class))
+mpg%>%count(class)%>%ggplot()+geom_bar(aes(x=class,y=n),stat = "identity")
+total=mpg%>%summarise(n=n())
+mpg%>%count(class)%>%
+  ggplot()+geom_bar(aes(x=class,y=n/total$n*100),stat = "identity")

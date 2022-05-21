@@ -1,0 +1,134 @@
+---
+title: "2nd Midterm (75 min)"
+author: "Write your name"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warning = FALSE)
+
+```
+
+## Introduction
+
+Solve the problems, knit markdown into an html file and upload it to e-classroom. Set up Rmarkdown in such a way that both the code and output are visible, however hide all warnings and messages. Also set it up so that html is created regardless if errors are present.
+
+Good luck!
+
+## Problem 1 (9 points)
+
+Import data about TripAdvisor reviews [\<https://raw.githubusercontent.com/urosgodnov/datasets/master/TA_reviews.csv\>](https://raw.githubusercontent.com/urosgodnov/datasets/master/TA_reviews.csv){.uri}
+```{r}
+library(tidyverse)
+library(lubridate)
+library(stringr)
+trip_dav = read_csv("https://raw.githubusercontent.com/urosgodnov/datasets/master/TA_reviews.csv")%>%mutate(year=year(dmy(Date)))
+trip_dav%>% mutate(ints = str_extract_all(trip_dav$Review, "[1-9]+[0-9]*"))%>%separate_rows(ints,sep = ",")%>%group_by(year) %>%summarise(allSum=sum(as.integer(ints),na.rm=T))
+```
+
+What is the sum of all integers, that appear in the column Review in any form, grouped by review year? First get **ALL** integers from each review, then use the separate_rows() function, where you split the values with  sep=",".
+
+Example:
+
+Starting state
+
++-------------------------+--------------------------------------------+
+| id                      | Reviews                                    |
++=========================+============================================+
+| 1                       | "Lunch was only 4.99€"                     |
++-------------------------+--------------------------------------------+
+| 2                       | "I was waiting to be served for 2 hours."  |
++-------------------------+--------------------------------------------+
+
++-------------------------+--------------------------------------------+
+| id                      | integers                                   |
++=========================+============================================+
+| 1                       | c("4","99")                                |
++-------------------------+--------------------------------------------+
+| 2                       | "2"                                        |
++-------------------------+--------------------------------------------+
+
+: --
+
+separate_rows(integers,sep=",")
+
+
++-------------------------+--------------------------------------------+
+| id                      | integers                                   |
++=========================+============================================+
+| 1                       | "4"                                        |
++-------------------------+--------------------------------------------+
+| 1                       | "99"                                       |
++-------------------------+--------------------------------------------+
+| 2                       | "2"                                        |
++-------------------------+--------------------------------------------+
+
+End state
+
++-------------------------+--------------------------------------------+
+| (aggregate by year)     | sum                                        |
++=========================+============================================+
+| 1                       | 103                                        |
++-------------------------+--------------------------------------------+
+| 2                       | 2                                          |
++-------------------------+--------------------------------------------+
+
+## Problem 2 (8 points)
+```{r}
+library(gt)
+
+master <- read.csv("https://raw.githubusercontent.com/urosgodnov/datasets/master/Master.csv")
+field <- read.csv("https://raw.githubusercontent.com/urosgodnov/datasets/master/FieldingOF.csv")
+
+master%>%inner_join(field, by = c("playerID" ="playerID"))%>%select(nameFirst, nameLast, Gcf, yearID)%>%arrange(yearID)%>%filter(yearID %in% (1940:1945))%>%filter(grepl("[a-z]a.$", nameLast))%>%group_by(yearID)%>%slice_max(Gcf,n=3)%>%gt()
+```
+
+Import the data:
+
+\- Master <https://raw.githubusercontent.com/urosgodnov/datasets/master/Master.csv>
+
+\- FieldingOF <https://raw.githubusercontent.com/urosgodnov/datasets/master/FieldingOF.csv>
+
+Show the players (first name,last name, Gcf, yearID) for years (yearID) 1940-1945. Among these players find those that have the second to last letter in their last name equal to a, then show the top 3 that scored the most "Gcf" for each year. Format the output by use of the gt package.
+
+## Problem 3 (7 points)
+
+Import data about mobile phones <https://raw.githubusercontent.com/urosgodnov/datasets/master/BT.csv>. Take 200 rows chosen at random and the following columns:
+```{r}
+mf = read_csv("https://raw.githubusercontent.com/urosgodnov/datasets/master/BT.csv")
+mf_1= mf%>%select(c("price_range","battery_power","mobile_wt","talk_time"))%>%slice_sample(n = 200)
+mf_1
+mf_1%>%ggplot()+geom_point(aes(x = battery_power,y=mobile_wt,size = talk_time))+geom_hline(yintercept = 150,linetype = "dashed",color = "red")+ geom_text(aes(x = 700, y = 150), label = "mobile_wt=150", color = "blue") +theme_minimal()+ facet_wrap(~price_range,scales = "free")
+
+```
+
+\- price_range
+
+\- battery_power
+
+\- mobile_wt
+
+\- talk_time
+
+Take the randomly chosen data and show it on a scatterplot, where on the x axis you have 
+battery_power, on the y axis you have mobile_wt, and the point size should be affected by talk_time. Show everything by price_range (facet_wrap). Take care of free scales. Add a horizontal line at mobile_wt=150. The line should be dashed, red and it should have a blue caption saying "mobile_wt=150". The plot theme should be minimal. 
+
+## Problem 4 (6 points)
+
+Import data about mobile phones <https://raw.githubusercontent.com/urosgodnov/datasets/master/BT.csv>.
+```{r}
+mobile = read_csv("https://raw.githubusercontent.com/urosgodnov/datasets/master/BT.csv")
+IndOPer = function(bp,ph,pw,tt){ (bp+mean(ph,pw))/tt}
+IndOPer_v = Vectorize(IndOPer)
+mobile%>%group_by(price_range)%>%select(battery_power,px_height,px_width, talk_time)%>%mutate(IndexofPerformance = IndOPer_v(battery_power,px_height,px_width, talk_time))%>%gt()%>%summary_rows(columns = c(IndexofPerformance),fns=list(avg="mean"))
+```
+
+Calculate the mean IndexOfPerformance by use of formula "IndexOfPerformance=(battery_power+mean(px_height, px_width))/talk_time"
+for each price_range!. Show the price_range and mean IndexOfPerformance by use of the package gt.
+
+IndexOfPerformance must to be calculated via UDF (user defined function)!!
+

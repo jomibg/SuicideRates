@@ -1,0 +1,109 @@
+library(tidyverse)
+library(plyr)
+#nested if/else
+dfTitanic = as.tibble(Titanic)%>%select(Class,Age,Sex,Survived)%>%
+  filter(Class!="Crew")
+dfTitanic%>%mutate(Comment = 
+                     ifelse(Age=="Child" & Survived=="No","No child should die",
+                   ifelse(Age == "Adult" & Sex =="Male" & Survived =="Yes",
+                          "Coward!",":(")))
+#case_when
+dfTitanic%>%mutate(Comment = 
+              case_when(Age == "Child" & Survived == "No"~"No child should die",
+                        Age == "Adult" & Sex == "Male" & Survived == "Yes"~"Coward",
+                        TRUE ~ ":("))
+#unite/separate
+dataHEC = as.tibble(HairEyeColor)%>%head(n=4)
+dataHEC%>%unite("Properties",Hair:Sex,sep = "/")
+df<-data.frame(name=c("Sam Jones Sr. Mr.",
+                      "Lady Gaga Singer",
+                      "Valentino Rossi Mr. (Junior) son"))
+df%>%separate("name",into=c("name","surname"),extra="drop")
+df%>%separate("name",into=c("name","surname","Something","Title"), 
+              extra="drop", fill="right")
+#nest/unnest
+df<-iris%>%nest(-Species)
+df%>%unnest()%>%head(2)
+############################LAB
+AMdf = as.data.frame(airmiles)%>%dplyr::rename(Airmiles=x)%>%cbind(year = 1937:1960)
+dates_df <- data.frame(date = c("5/24/1930",
+                                "5/25/1930",
+                                "5/26/1930",
+                                "5/27/1930",
+                                "5/28/1930"),
+                       stringsAsFactors = FALSE)
+dates = dates_df%>%separate("date",into = c("d","m","y"),sep="/")
+people = data.frame(Age = sample(1:95,100,replace=T))
+people%>%mutate(cut(Age,breaks=c(1,20,45,55,70,100)))%>%summary()
+#############################
+# map family functions
+airquality%>%select(Temp)%>%map(mean)
+# map_df: list/columns -> df
+files = list.files("./Datasets")
+files = str_c("./Datasets/",files)
+allDf = map_df(files,read_csv)
+# more than 1 function
+airquality%>%select(Temp)%>%invoke_map(.f=c("mean", "max"))
+# 2 args
+airquality%>%select(Month,Day)%>%mutate(Sum = map2_int(Month,Day,sum))%>%
+  head(3)%>%as_tibble()
+airquality%>%select(Month, Day)%>%mutate(Something=map2_chr(Month,Day,sum))%>%
+  head(3)%>%as_tibble()
+#map handles vectorization
+stupidFunction<-function(x,y){return(sum(x,y))}
+airquality%>%select(Month, Day)%>%
+  mutate(Something=map2_chr(Month,Day,stupidFunction))%>%
+  head(3)%>%as_tibble()
+#pmap - arbitrary number of args
+airquality%>%select(Wind,Temp, Month, Day)%>%
+  mutate(Something=pmap_dbl(list(Wind,Temp,Month,Day),sum))%>%
+  head(3)%>%as_tibble()
+#na.rm - apply with both arguments in case there isn't NA, otherwise
+# apply with single arg
+#creating a linear model(complex function) for every number of cyl
+call1<-mtcars%>%select(c(cyl,mpg,wt))%>%nest(cols =-cyl)%>%
+  mutate(model=map(cols,~lm(formula=mpg~wt,data=.x)))
+call1%>%pluck("cols",1)
+###############################################
+n_unique = function(x){length(unique(x))}
+mtcUnique = mtcars%>%map_df(n_unique)%>%t()%>%as_tibble()
+avg = mtcUnique%>%select("V1")%>%map_dbl(mean)
+sd.p=function(x){sd(x)*sqrt((length(x)-1)/length(x))}
+standDev = mtcars%>%select(is.numeric)%>%map_df(sd.p)
+
+#TABLE REPRESENTATION
+library(gt)
+library(glue)
+library(lubridate)
+?between
+df = sp500%>%filter(between(date,ymd("2015-12-24"),ymd("2015-12-31")))%>%
+  arrange(date)
+df%>%gt()
+# fmt_currency,fmt_date,tab_header....
+dfGT = sp500%>%
+  mutate(year = year(date),wday = wday(date,label = T,locale = "en_US.UTF-8"))%>%
+  select(year,wday,high,low)%>%group_by(year,wday)%>%
+  dplyr::summarise(high = mean(high),low = mean(low))%>%filter(year %in% c(2014,2015)) %>% 
+  ungroup()
+dfGT%>%gt(rowname_col = "year")%>%
+  tab_header(title = "SP500",subtitle = "2014/2015")%>%
+  fmt_currency(columns = vars(high,low),currency = "EUR")
+dfGT%>%gt(groupname_col = "year")%>%
+  fmt_currency(columns = vars(high,low),currency = "EUR")
+# summary_rows, summary_rows by groupd
+dfGT%>%filter(wday %in% c("Mon","Tue"))%>%gt(groupname_col = "year")%>%
+  fmt_currency(columns = c(high,low),currency = "EUR")%>%
+  summary_rows(columns = c(high,low),fns=list(avg="mean"))
+
+dfGT %>% dplyr::filter(wday %in% c("Mon","Tue")) %>% 
+  gt(groupname_col = "year", rowname_col ="wday") %>% 
+  fmt_currency(columns=c(high,low),currency = "EUR") %>% 
+  summary_rows(
+    groups = TRUE,
+    columns = vars(high, low),
+    fns = list(
+      avg = ~mean(., na.rm = TRUE),
+      total = ~sum(., na.rm = TRUE),
+      s.d. = ~sd(., na.rm = TRUE)
+    )
+  )
